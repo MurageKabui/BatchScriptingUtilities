@@ -1,0 +1,7 @@
+// ACCOUNT NAME          |   FULL USERNAME      | ACC PASSWORD     | Y|N :: This line is a header.
+KimKardash               , Kim KArdash Ks       , Dennis@2020      , N
+JohnDoeM                 , John Mungai Njau     , Johnie@2020      , Y
+KimJulius                , Kimani Julius Anse   , %!#$@kimani2020  , Y
+TestingBatch             , Deeznutsz for batch  , PasswordIDC+     , N
+Batchprogrammer          , Username batcher kim , progBatchAuto    , Y
+km
