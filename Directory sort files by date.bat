@@ -1,6 +1,10 @@
 @Echo Off & CLS
 SetLocal EnableDelayedExpansion
 
+rem Author : Kabue Murage
+rem Forums : 254peepee
+rem dennisk@zainahtech.com
+
 For /F "tokens=*" %%a In ('dir "%cd%" /b') Do (
 	for /f "tokens=1,2,3 delims=/ " %%k in ('Echo. %%~ta') do (
 			call :iDate2sMonth_resolve "%%k" "%%l" "%%m" sMonth
