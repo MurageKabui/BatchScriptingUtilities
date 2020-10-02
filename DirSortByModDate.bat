@@ -41,10 +41,8 @@ title Sorting :%cd%
 	set ifolderCount=0
 	set ifileCount=0
 	set iTotal_f=0
-
-
-
-set "Start=%TIME%"
+	set "Start=%TIME%"
+	
 	::delims is disabled # eol is disabled tokens=* is redundant
 	For /F tokens^=*^ eol^= %%a in ('!cm! !AttribHidden!') do (
 		call :cnt totalcount NumberFiles 0
@@ -67,7 +65,6 @@ set "Start=%TIME%"
 			) else (echo Found a file called !filename!)
 		)
 		for /f "tokens=1,2,3 delims=/ " %%k in ("%%~ta") do (
-				rem echo Received as : %%k ==  %%l === %%m
 				call :iDate2sMonth_resolve "%%k" "%%l" "%%m" sMonth
 				call :sortme "!filename!" "!sMonth!" "%%m"
 		)
@@ -76,7 +73,7 @@ set "End=%TIME%"
 
 call :timediff Elapsed Start End
 call :GetTotal !ifolderCount! !ifileCount! iTotal_f
-Title Sorted  !ifolderCount! folders and !ifileCount! files , total = !iTotal_f! , Elspsed time : %Elapsed%
+Title Sorted  !ifolderCount! folders and !ifileCount! files , total = !iTotal_f! , Elapsed time : %Elapsed%
 rem clean up temp file by func cl.
 if %fastmode% NEQ 1 if exist "X" del /f /q "X"
 popd
@@ -91,7 +88,7 @@ set /a _total=!_n1!+!_n2!
 set %3=%_total%
 exit /b
 
-rem External counter.
+rem dynamic counter.
 :cnt VarName VarOutPut initialVal
 	if not defined %1 (SET %1=%3)
 	Set "%2=%1"
@@ -99,6 +96,7 @@ rem External counter.
 	set %2=%2
 exit /b
 
+rem Sort function
 :sortme <file or folder> <creation month = !sMonth!> <year mod>
 	rem fix illegal chars in filename that may cause an error.
 	set "_f=%~1"
@@ -116,6 +114,7 @@ exit /b
 	)
 exit /b
 
+rem evaluate user settings
 :Settings <sFQPN> <foldervaretting> <FinalCommand>
 	rem Eval settings..
 	if /i %2 EQU 1 (set _fol=D) else (
