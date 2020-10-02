@@ -27,7 +27,8 @@ set sIgnoredFileTypes=.bat .ini .ink
 
 rem help params
 set vHelpParameters=^-h ^--h ^--help help
- 
+
+Set AttribHidden=/a:h /a:-h
 rem if /i "%cd%" EQU "C:\Users\%username%\AppData\Roaming\Microsoft\Windows\SendTo" (
 rem 	call :msgPrompt "Got a folder called :  %~1" "Folder sort" "%~1" sConfirmedPth
 rem 	echo MagicSort : %sConfirmedPth%
@@ -36,36 +37,46 @@ rem )
 pushd "%~1"
 title Sorting :%cd%
 	call :Settings "%cd%" !bSortFiles_Folders! cm
-	set folderCount=0
-	set fileCount=0
-	set total_f=0
-	For /F "tokens=*" %%a In ('!cm! /a:h /a:-h') do (
+	set ifolderCount=0
+	set ifileCount=0
+	set iTotal_f=0
+
+	::delims is disabled # eol is disabled tokens=* is redundant
+	rem For /f tokens^=*^ delims^=^ eol^= %%a in ("###trim ###") do echo.%%a
+
+	For /F tokens^=*^ eol^= %%a in ('!cm! !AttribHidden!') do (
 		call :cnt totalcount NumberFiles 0
-		set filename=%%a
+		set "filename=%%a"
 		call :IsDir "!filename!" isd
+		title Sorted [folders :!ifolderCount!]  files [!ifileCount!]
 		if !isd! EQU 1 (
-			call :cnt folderCount ifolders 0
-			if /i %fastmode% NEQ 1 ( 
+			call :cnt ifolderCount foldervar 0
+			if %fastmode% NEQ 1 ( 
 				call :cl 0b " Sorting folder "
-				call :cl 0c ": %%a"
+				call :cl 0c ": !filename!"
 				echo.
-			) else (echo Sorting folder %%a)
+			) else (echo Sorting folder !filename!)
 		) else (
-			call :cnt fileCount ifiles 0
-			if /i %fastmode% NEQ 1 ( 
+			call :cnt ifileCount filesCountvar 0
+			if %fastmode% NEQ 1 ( 
 				call :cl 0b " Found a file called "
-				call :cl 0c ": %%a"
+				call :cl 0c ": !filename!"
 				echo.
-			) else (echo Found a file called %%a)
+			) else (echo Found a file called !filename!)
 		)
-		for /f "tokens=1,2,3 delims=/ " %%k in ('Echo. %%~ta') do (
+		for /f "tokens=1,2,3 delims=/ " %%k in ("%%~ta") do (
+				rem echo Received as : %%k ==  %%l === %%m
 				call :iDate2sMonth_resolve "%%k" "%%l" "%%m" sMonth
-				call :sortme "%%a" "!sMonth!" "%%m"
+				call :sortme "!filename!" "!sMonth!" "%%m"
 		)
+		rem echo debug ok 4
 	)
-call :GetTotal !folderCount! !fileCount! total_f
-Echo Done [folders :%folderCount%]  files [%fileCount%] total = %total_f%
+call :GetTotal !ifolderCount! !ifileCount! iTotal_f
+Title Sorted [folders :%ifolderCount%]  files [%ifileCount%] total = %iTotal_f%
+rem clean up temp file by func cl.
+if %fastmode% NEQ 1 if exist "X" del /f /q "X"
 popd
+
 pause
 exit /b
 
@@ -85,29 +96,29 @@ rem External counter.
 exit /b
 
 :sortme <file or folder> <creation month = !sMonth!> <year mod>
+	rem fix illegal chars in filename that may cause an error.
+	set "_f=%~1"
+
 	If exist "%cd%\%~2 %~3\" (
-		Echo    Moving file "%~1" to ".\%~2 %~3\"		
-		move /Y "%~1" "%cd%\!sMonth! %%m\"
+		Echo.    File   [!_f!] was last modified on : %~2  year : %~3
+		Echo.    Moving [!_f!] to ".\%~2 %~3\"		
+		rem move /Y "!_f!" "%cd%\!sMonth! %%m\"
 	) else (
-		Echo    Making folder ".\%~2 %~3\"
-		if not exist "%cd%\!sMonth! %%m\" (md "%cd%\!sMonth! %%m\")
-		Echo    moving file "%~1" to ".\%~2 %~3\"
-		move /Y "%%a" "%cd%\!sMonth! %%m\"
+		Echo.    Folder [!_f!]       was last modified on : %~2 year : %~3
+		Echo.    Folder [./%~2 %~3] does not exist, making it..
+		rem if not exist "%cd%\!sMonth! %%m\" (md "%cd%\!sMonth! %%m\")
+		Echo.    moving [!_f!] to ".\%~2 %~3\"
+		rem move /Y "%%a" "%cd%\!sMonth! %%m\"
 	)
 exit /b
 
-:Settings <sFQPN> <ifolderSetting> <FinalCommand>
+:Settings <sFQPN> <foldervaretting> <FinalCommand>
 	rem Eval settings..
-	if /i %2 EQU 1 (
-		set _fol=D
-		) else (
-			if /i %2 EQU 0 (
-				set _fol=-D
-				) else (
+	if /i %2 EQU 1 (set _fol=D) else (
+			if /i %2 EQU 0 (set _fol=-D) else (
 				if /i %2 EQU 3 (
 					set %3=dir "%~1" /b
-					exit /b
-					)
+					exit /b)
 				)
 		)
 	set %3=dir "%~1" /b /A:!_fol!
@@ -135,7 +146,7 @@ goto :EOF
 :cl
 if not defined null (
 	for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1) do rem"') do (set "null=%%a")
-	)
+	) 
 <nul > X set /p ".=."
 set "param=^%~2" !
 set "param=!param:"=\"!"
@@ -145,7 +156,7 @@ exit /b
 
 :iDate2sMonth_resolve <iMonth> <iday> <iYear> <smonthVar>
 Set /a Counter=0
-call :str.rep "%~1" "0" "" iMonth
+call :strrep "%~1" "0" "" iMonth
 For %%a in (January February March April May June July August September October November December) do (
         Set /a Counter=!Counter!+1
         If /i "!counter!" EQU "!iMonth!" (
@@ -170,7 +181,7 @@ pause
 exit /b 
 
 
-:str.rep <string> <word> <replace> <result>
+:strrep <string> <word> <replace> <result>
 	SET "string=%~1"
 	SET "%4=!string:%~2=%~3!"
 GOTO :EOF
