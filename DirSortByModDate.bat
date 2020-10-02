@@ -37,13 +37,12 @@ rem )
 pushd "%~1"
 title Sorting :%cd%
 	call :Settings "%cd%" !bSortFiles_Folders! cm
+	
 	set ifolderCount=0
 	set ifileCount=0
 	set iTotal_f=0
 
 	::delims is disabled # eol is disabled tokens=* is redundant
-	rem For /f tokens^=*^ delims^=^ eol^= %%a in ("###trim ###") do echo.%%a
-
 	For /F tokens^=*^ eol^= %%a in ('!cm! !AttribHidden!') do (
 		call :cnt totalcount NumberFiles 0
 		set "filename=%%a"
