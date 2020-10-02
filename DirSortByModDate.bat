@@ -1,14 +1,18 @@
 @Echo Off
 SetLocal EnableDelayedExpansion
 
+rem ===============================================================
 rem Author : Kabue Murage 
 rem Forums : 254peepee
+rem directory sorting using winbatch
 
-rem last modified date
-rem state of the art directory sorting using winbatch
+rem Copy this file to : C:\Users\%username%\AppData\Roaming\Microsoft\Windows\SendTo
+rem and using file explorer, select the directory you want to sort and right click
+rem for the context menu and navigate to "Send To" and select "DirSortByModDate.bat"
+
+rem ===============================================================
 
 set bSortFiles_Folders=3
-
 rem 0 = Will skip sorting folders. [default]
 rem 1 = Will also sort folders.
 rem 3 = Sort both files and folders
