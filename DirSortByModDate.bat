@@ -87,12 +87,12 @@ exit /b
 :sortme <file or folder> <creation month = !sMonth!> <year mod>
 	If exist "%cd%\%~2 %~3\" (
 		Echo    Moving file "%~1" to ".\%~2 %~3\"		
-		rem move /Y "%~1" "%cd%\!sMonth! %%m\"
+		move /Y "%~1" "%cd%\!sMonth! %%m\"
 	) else (
 		Echo    Making folder ".\%~2 %~3\"
-		rem if not exist "%cd%\!sMonth! %%m\" (md "%cd%\!sMonth! %%m\")
+		if not exist "%cd%\!sMonth! %%m\" (md "%cd%\!sMonth! %%m\")
 		Echo    moving file "%~1" to ".\%~2 %~3\"
-		rem move /Y "%%a" "%cd%\!sMonth! %%m\"
+		move /Y "%%a" "%cd%\!sMonth! %%m\"
 	)
 exit /b
 
