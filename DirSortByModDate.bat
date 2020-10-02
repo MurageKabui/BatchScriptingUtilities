@@ -18,7 +18,7 @@ rem 1 = Will also sort folders.
 rem 3 = Sort both files and folders
 
 
-set fastmode=0
+set fastmode=1
 rem 0 = slow sorting with colored output.
 rem 1 = fast sorting with plain output.
 
@@ -37,17 +37,20 @@ rem )
 pushd "%~1"
 title Sorting :%cd%
 	call :Settings "%cd%" !bSortFiles_Folders! cm
-	
+
 	set ifolderCount=0
 	set ifileCount=0
 	set iTotal_f=0
 
+
+
+set "Start=%TIME%"
 	::delims is disabled # eol is disabled tokens=* is redundant
 	For /F tokens^=*^ eol^= %%a in ('!cm! !AttribHidden!') do (
 		call :cnt totalcount NumberFiles 0
 		set "filename=%%a"
 		call :IsDir "!filename!" isd
-		title Sorted [folders :!ifolderCount!]  files [!ifileCount!]
+		title Sorted  !ifolderCount! folders and !ifileCount! files.
 		if !isd! EQU 1 (
 			call :cnt ifolderCount foldervar 0
 			if %fastmode% NEQ 1 ( 
@@ -68,10 +71,12 @@ title Sorting :%cd%
 				call :iDate2sMonth_resolve "%%k" "%%l" "%%m" sMonth
 				call :sortme "!filename!" "!sMonth!" "%%m"
 		)
-		rem echo debug ok 4
 	)
+set "End=%TIME%"
+
+call :timediff Elapsed Start End
 call :GetTotal !ifolderCount! !ifileCount! iTotal_f
-Title Sorted [folders :%ifolderCount%]  files [%ifileCount%] total = %iTotal_f%
+Title Sorted  !ifolderCount! folders and !ifileCount! files , total = !iTotal_f! , Elspsed time : %Elapsed%
 rem clean up temp file by func cl.
 if %fastmode% NEQ 1 if exist "X" del /f /q "X"
 popd
@@ -178,6 +183,25 @@ goto :eof
 echo help info..
 pause
 exit /b 
+
+
+:timediff <outDiff> <inStartTime> <inEndTime>
+    set "Input=!%~2! !%~3!"
+    for /F "tokens=1,3 delims=0123456789 " %%A in ("!Input!") do set "time.delims=%%A%%B "
+	for /F "tokens=1-8 delims=%time.delims%" %%a in ("%Input%") do (
+		    for %%A in ("@h1=%%a" "@m1=%%b" "@s1=%%c" "@c1=%%d" "@h2=%%e" "@m2=%%f" "@s2=%%g" "@c2=%%h") do (
+		        for /F "tokens=1,2 delims==" %%A in ("%%~A") do (for /F "tokens=* delims=0" %%B in ("%%B") do set "%%A=%%B")
+		    )
+	    )
+    set /a "@d=(@h2-@h1)*360000+(@m2-@m1)*6000+(@s2-@s1)*100+(@c2-@c1), @sign=(@d>>31)&1, @d+=(@sign*24*360000), @h=(@d/360000), @d%%=360000, @m=@d/6000, @d%%=6000, @s=@d/100, @c=@d%%100"
+
+    if %@h% LEQ 9 set "@h=0%@h%"
+    if %@m% LEQ 9 set "@m=0%@m%"
+    if %@s% LEQ 9 set "@s=0%@s%"
+    if %@c% LEQ 9 set "@c=0%@c%"
+
+    set "%~1=%@h%%time.delims:~0,1%%@m%%time.delims:~0,1%%@s%%time.delims:~1,1%%@c%"
+exit /b
 
 
 :strrep <string> <word> <replace> <result>
