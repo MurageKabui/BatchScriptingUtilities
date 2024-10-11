@@ -1,0 +1,50 @@
+Windows Registry Editor Version 5.00
+
+; Simple String Entry
+[HKEY_LOCAL_MACHINE\Software\MyApp]
+"AppName"="My Test Application"
+
+; Default value (unnamed, or @)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+@="DefaultValue"
+
+; REG_DWORD entry
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"Enabled"=dword:00000001
+
+; REG_QWORD entry
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"MaxUsage"=qword:00000000000003e8
+
+; REG_EXPAND_SZ entry (with environment variables)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"InstallPath"=hex(2):25,00,50,00,72,00,6f,00,67,00,72,00,61,00,6d,00,46,00,69,\
+  00,6c,00,65,00,73,00,25,00,00,00
+
+; REG_BINARY entry (hexadecimal values)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"BinaryData"=hex:01,00,02,00,03,00,ff,ff,04,00,05,00
+
+; REG_MULTI_SZ entry (multiline string)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"SupportedExtensions"=hex(7):74,00,78,00,74,00,00,00,64,00,6f,00,63,00,00,00,\
+  78,00,6d,00,6c,00,00,00,00,00
+
+; Multiline REG_MULTI_SZ with escape sequences
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"MultiLineExample"=hex(7):4c,00,69,00,6e,00,65,00,20,00,31,00,00,00,4c,00,69,\
+  00,6e,00,65,00,20,00,32,00,00,00,4c,00,69,00,6e,00,65,00,20,00,33,00,00,00,\
+  00,00
+
+; Delete an entry (using -)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"ObsoleteSetting"=-
+
+; Special characters in a string (REG_SZ)
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"SpecialChars"="This & that, 100% correct! ^_^"
+
+; String with escaped backslashes and quotes
+[HKEY_LOCAL_MACHINE\Software\MyApp\Settings]
+"PathWithBackslash"="C:\\Program Files\\MyApp\\"
+"QuotedString"="This is a \"quoted\" string"
