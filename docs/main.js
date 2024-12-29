@@ -134,17 +134,20 @@ function processValueLine(line, currentKey, lines, currentIndex) {
         value = multilineValue;
     }
 
+    // Clean up the name - remove extra quotes
+    const cleanName = name === '@' ? '@' : name.replace(/^"(.*)"$/, '$1');
+
     const regCommand = name === '@' 
         ? `REG ADD "${currentKey}" /ve`
-        : `REG ADD "${currentKey}" /v "${name.replace(/"/g, '\\"')}"`;
+        : `REG ADD "${currentKey}" /v "${cleanName}"`;
 
     if (value === '-') {
-        batLine += `${name}\n${name === '@' 
+        batLine += `${cleanName}\n${name === '@' 
             ? `REG DELETE "${currentKey}" /ve /f`
-            : `REG DELETE "${currentKey}" /v "${name.replace(/"/g, '\\"')}" /f`} >NUL 2>&1 || @ECHO   [-] Failed to delete value\n`;
+            : `REG DELETE "${currentKey}" /v "${cleanName}" /f`} >NUL 2>&1 || @ECHO   [-] Failed to delete value\n`;
     } else {
         const { type, processedValue } = processRegistryValue(value);
-        batLine += `${name} (${type})\n${regCommand} /t ${type} /d ${processedValue} /f >NUL 2>&1 || @ECHO   [-] Failed to set value\n`;
+        batLine += `${cleanName} (${type})\n${regCommand} /t ${type} /d ${processedValue} /f >NUL 2>&1 || @ECHO   [-] Failed to set value\n`;
     }
 
     return { batLine, currentIndex };
@@ -206,10 +209,6 @@ function processHexString(hexString) {
     return cleanHex;
 }
 
-
-
-
-
 function hexToString(hex) {
     return hex;
     let str = '';
@@ -226,7 +225,7 @@ function cleanStringValue(value) {
     if (value.startsWith('"') && value.endsWith('"')) {
         value = value.slice(1, -1);
     }
-    // Escape special characters for batch script
+    // Escape special characters for batch script - single level of escaping
     return `"${value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}"`;
 }
 
