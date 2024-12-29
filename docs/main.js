@@ -164,7 +164,12 @@ function processRegistryValue(value) {
     } else if (value.toLowerCase().startsWith('hex(2):')) {
         return {
             type: 'REG_EXPAND_SZ',
-            processedValue: processHexString(value.substring(7))
+            processedValue: value.substring(7).replace(/[,\\\s]/g, '')
+        };
+    } else if (value.toLowerCase().startsWith('hex(7):')) {
+        return {
+            type: 'REG_MULTI_SZ',
+            processedValue: value.substring(7).replace(/[,\\\s]/g, '')
         };
     } else if (value.toLowerCase().startsWith('dword:')) {
         return {
@@ -178,13 +183,32 @@ function processRegistryValue(value) {
         };
     }
     
-    // Default case for other types
-    const valueType = value.includes('%') ? 'REG_EXPAND_SZ' : 'REG_SZ';
+    // Improved default case handling
+    if (value.includes('%')) {
+        return {
+            type: 'REG_EXPAND_SZ',
+            processedValue: `"${value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}"`
+        };
+    }
+    
     return {
-        type: valueType,
-        processedValue: `"${value.replace(/"/g, '\\"')}"`
+        type: 'REG_SZ',
+        processedValue: `"${value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}"`
     };
 }
+
+function processHexString(hexString) {
+    // Remove all spaces, commas and line continuation characters
+    const cleanHex = hexString.replace(/[,\\\s]/g, '');
+    
+    // For hex(2) values (REG_EXPAND_SZ), we'll keep the hex format
+    // as it's more reliable than trying to convert to string
+    return cleanHex;
+}
+
+
+
+
 
 function hexToString(hex) {
     return hex;
@@ -198,7 +222,12 @@ function hexToString(hex) {
 }
 
 function cleanStringValue(value) {
-    return `"${value.slice(1, -1).replace(/"/g, '\\"').replace(/\\\\/g, '\\')}"`; // Strip surrounding quotes, escape inner quotes, and handle backslashes
+    // Remove surrounding quotes and handle escaping
+    if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1);
+    }
+    // Escape special characters for batch script
+    return `"${value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}"`;
 }
 
 // Placeholder for fetching the next line in multiline hex data
