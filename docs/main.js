@@ -87,8 +87,15 @@ IF %ERRORLEVEL% NEQ 0 (
             
             if (line.startsWith('[')) {
                 currentKey = line.substring(1, line.length - 1);
-                batContent += `@ECHO   [+] Processing key: ${currentKey}\n`;
-                batContent += `REG ADD "${currentKey}" /f >NUL 2>&1 || @ECHO   [-] Failed to create key\n`;
+                if (currentKey.startsWith('-')) {
+                    // Handle key deletion
+                    currentKey = currentKey.substring(1);
+                    batContent += `@ECHO   [+] Processing key: ${currentKey}\n`;
+                    batContent += `REG DELETE "${currentKey}" /f >NUL 2>&1 || @ECHO   [-] Failed to delete key\n`;
+                } else {
+                    batContent += `@ECHO   [+] Processing key: ${currentKey}\n`;
+                    batContent += `REG ADD "${currentKey}" /f >NUL 2>&1 || @ECHO   [-] Failed to create key\n`;
+                }
             } else if (line.includes('=')) {
                 const { batLine, currentIndex } = processValueLine(line, currentKey, lines, i);
                 batContent += batLine;
@@ -160,9 +167,10 @@ function processRegistryValue(value) {
             processedValue: cleanStringValue(value)
         };
     } else if (value.toLowerCase().startsWith('hex:')) {
+        const hexData = value.substring(4).replace(/[,\\\s]/g, '');
         return {
             type: 'REG_BINARY',
-            processedValue: value.substring(4).replace(/[,\\\s]/g, '')
+            processedValue: hexData.length === 0 ? '""' : hexData
         };
     } else if (value.toLowerCase().startsWith('hex(2):')) {
         return {
@@ -179,10 +187,11 @@ function processRegistryValue(value) {
             type: 'REG_DWORD',
             processedValue: parseInt(value.substring(6), 16)
         };
-    } else if (value.toLowerCase().startsWith('qword:')) {
+    } else if (value.toLowerCase().startsWith('hex(b):')) {
+        const hexValue = value.substring(7).replace(/[,\\\s]/g, '');
         return {
             type: 'REG_QWORD',
-            processedValue: BigInt(`0x${value.substring(6)}`).toString()
+            processedValue: BigInt(`0x${hexValue}`).toString()
         };
     }
     
