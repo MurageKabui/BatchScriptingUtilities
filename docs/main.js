@@ -53,80 +53,137 @@ function closeModal() {
 // Batch conversion function
 function convertRegToBat(regContent) {
     try {
-
         regContent = regContent.replace(/^\uFEFF/, '');
         const lines = regContent.split('\n');
-        let batContent = '@ECHO OFF\nTitle Reg2Bat Online Converter\n\n';
+        let batContent = `@ECHO OFF
+@SETLOCAL EnableDelayedExpansion
+@TITLE Registry Import Script
+@COLOR 0A
+
+@ECHO.
+@ECHO  ╔════════════════════════════════════════╗
+@ECHO  ║        Registry Import Process         ║
+@ECHO  ╚════════════════════════════════════════╝
+@ECHO.
+
+@REM Check for Administrator privileges
+NET SESSION >NUL 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    @ECHO   [!] This script requires Administrator privileges.
+    @ECHO   [!] Please run as Administrator.
+    @PAUSE >NUL
+    @EXIT /B 1
+)
+
+@ECHO   [*] Starting registry import...
+@ECHO.
+`;
         let currentKey = '';
+        let entryCount = 0;
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
             if (line === '' || line.startsWith(';')) continue;
-            if (line.startsWith('Windows Registry Editor')) {
-                batContent += 'echo Converting registry file...\n';
-            } else if (line.startsWith('[')) {
+            
+            if (line.startsWith('[')) {
                 currentKey = line.substring(1, line.length - 1);
-                batContent += `REG add "${currentKey}" /f\n`;
+                batContent += `@ECHO   [+] Processing key: ${currentKey}\n`;
+                batContent += `REG ADD "${currentKey}" /f >NUL 2>&1 || @ECHO   [-] Failed to create key\n`;
             } else if (line.includes('=')) {
                 const { batLine, currentIndex } = processValueLine(line, currentKey, lines, i);
                 batContent += batLine;
-                i = currentIndex; // Update the index in case of multiline values
+                i = currentIndex;
+                entryCount++;
             }
         }
 
-        batContent += '\n\n@echo Conversion completed.\n@Pause>nul';
+        batContent += `
+@ECHO.
+@ECHO   [✓] Process completed successfully
+@ECHO   [i] Total entries processed: ${entryCount}
+@ECHO.
+@PAUSE >NUL
+@ENDLOCAL
+@EXIT /B 0`;
+
         return batContent;
     } catch (error) {
-        console.error('Error during conversion:', error);
-        return `@ECHO OFF\necho Error during conversion: ${error.message}\n@Pause>nul`;
+        return `@ECHO OFF
+@COLOR 0C
+@ECHO Error during conversion: ${error.message}
+@PAUSE >NUL
+@EXIT /B 1`;
     }
 }
+
 
 // Process individual value line
 function processValueLine(line, currentKey, lines, currentIndex) {
     const [name, ...valueParts] = line.split('=');
     let value = valueParts.join('=').trim();
-    let batLine = '';
-
-    if (name === '@') {
-        batLine = `REG add "${currentKey}" /ve `;
-    } else {
-        batLine = `REG add "${currentKey}" /v "${name.replace(/"/g, '\\"')}" `;
-    }
+    let batLine = '@ECHO   [>] Setting value: ';
 
     // Handle multiline values
-    while (value.endsWith('\\') && currentIndex < lines.length - 1) {
-        currentIndex++;
-        value += lines[currentIndex].trim();
+    if (value.endsWith('\\')) {
+        let multilineValue = value;
+        while (currentIndex < lines.length - 1 && multilineValue.endsWith('\\')) {
+            currentIndex++;
+            const nextLine = lines[currentIndex].trim();
+            multilineValue = multilineValue.slice(0, -1) + nextLine;
+        }
+        value = multilineValue;
     }
 
-    if (value.startsWith('"')) {
-        batLine += `/t REG_SZ /d ${cleanStringValue(value)} /f\n`;
-    } else if (value.toLowerCase().startsWith('hex:')) {
-        let hexData = value.substring(4).replace(/[,\\\s]/g, '');
-        batLine += `/t REG_BINARY /d ${hexData} /f\n`;
-    } else if (value.toLowerCase().startsWith('hex(2):')) {
-        let hexData = value.substring(7).replace(/[,\\\s]/g, '');
-        let decodedString = hexToString(hexData);
-        batLine += `/t REG_EXPAND_SZ /d "${decodedString.replace(/"/g, '\\"')}" /f\n`;
-    } else if (value.toLowerCase().startsWith('dword:')) {
-        const dwordValue = parseInt(value.substring(6), 16);
-        batLine += `/t REG_DWORD /d ${dwordValue} /f\n`;
-    } else if (value.toLowerCase().startsWith('qword:')) {
-        const qwordValue = BigInt(`0x${value.substring(6)}`).toString();
-        batLine += `/t REG_QWORD /d ${qwordValue} /f\n`;
-    } else if (value === '-') {
-        batLine = name === '@' ?
-            `REG DELETE "${currentKey}" /ve /f\n` :
-            `REG DELETE "${currentKey}" /v "${name.replace(/"/g, '\\"')}" /f\n`;
+    const regCommand = name === '@' 
+        ? `REG ADD "${currentKey}" /ve`
+        : `REG ADD "${currentKey}" /v "${name.replace(/"/g, '\\"')}"`;
+
+    if (value === '-') {
+        batLine += `${name}\n${name === '@' 
+            ? `REG DELETE "${currentKey}" /ve /f`
+            : `REG DELETE "${currentKey}" /v "${name.replace(/"/g, '\\"')}" /f`} >NUL 2>&1 || @ECHO   [-] Failed to delete value\n`;
     } else {
-        // Handle REG_EXPAND_SZ and REG_MULTI_SZ
-        const multiLineValue = value.replace(/\\0/g, '\0').replace(/\\\\/g, '\\');
-        const valueType = multiLineValue.includes('%') ? 'REG_EXPAND_SZ' : 'REG_MULTI_SZ';
-        batLine += `/t ${valueType} /d "${multiLineValue.replace(/"/g, '\\"')}" /f\n`;
+        const { type, processedValue } = processRegistryValue(value);
+        batLine += `${name} (${type})\n${regCommand} /t ${type} /d ${processedValue} /f >NUL 2>&1 || @ECHO   [-] Failed to set value\n`;
     }
 
     return { batLine, currentIndex };
+}
+
+function processRegistryValue(value) {
+    if (value.startsWith('"')) {
+        return {
+            type: 'REG_SZ',
+            processedValue: cleanStringValue(value)
+        };
+    } else if (value.toLowerCase().startsWith('hex:')) {
+        return {
+            type: 'REG_BINARY',
+            processedValue: value.substring(4).replace(/[,\\\s]/g, '')
+        };
+    } else if (value.toLowerCase().startsWith('hex(2):')) {
+        return {
+            type: 'REG_EXPAND_SZ',
+            processedValue: processHexString(value.substring(7))
+        };
+    } else if (value.toLowerCase().startsWith('dword:')) {
+        return {
+            type: 'REG_DWORD',
+            processedValue: parseInt(value.substring(6), 16)
+        };
+    } else if (value.toLowerCase().startsWith('qword:')) {
+        return {
+            type: 'REG_QWORD',
+            processedValue: BigInt(`0x${value.substring(6)}`).toString()
+        };
+    }
+    
+    // Default case for other types
+    const valueType = value.includes('%') ? 'REG_EXPAND_SZ' : 'REG_SZ';
+    return {
+        type: valueType,
+        processedValue: `"${value.replace(/"/g, '\\"')}"`
+    };
 }
 
 function hexToString(hex) {
